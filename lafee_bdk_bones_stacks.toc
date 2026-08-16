@@ -1,0 +1,16 @@
+## Interface: 120100
+## Title: lafee bdk bones stacks
+## Notes: Secret-safe aura stack counters
+## Author: Lafee
+## Version: 0.1.0
+## SavedVariables: LafeeBDKBonesStacksDB
+
+Libraries/Init.xml
+Localization.lua
+Defaults.lua
+Anchors.lua
+Cursor.lua
+AuraTracker.lua
+Settings.lua
+MinimapButton.lua
+Core.lua
