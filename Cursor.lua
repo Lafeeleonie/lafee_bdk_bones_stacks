@@ -19,7 +19,7 @@ local function UpdateCursorTrackers()
         if runtime.cursorX ~= x or runtime.cursorY ~= y then
             runtime.cursorX, runtime.cursorY = x, y
             runtime.root:ClearAllPoints()
-            runtime.root:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
+            runtime.root:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
         end
     end
 end

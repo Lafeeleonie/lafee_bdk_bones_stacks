@@ -26,7 +26,7 @@ assert(loadfile("MinimapButton.lua") or loadfile("../MinimapButton.lua"))("lafee
 NS:SetupMinimapButton()
 assert(registered == NS.db.MinimapButton and visible == true)
 assert(dataObject and dataObject.type == "launcher")
-assert(dataObject.icon == "Interface\\Icons\\Spell_DeathKnight_BoneShield")
+assert(dataObject.icon == "Interface\\Icons\\ability_deathknight_boneshield")
 
 NS.db.MinimapButton.hide = true
 NS:UpdateMinimapButton()

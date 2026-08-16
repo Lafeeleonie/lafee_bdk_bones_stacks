@@ -51,8 +51,9 @@ local function ApplyTextStyle(runtime)
     local flags = tracker.FontFlags == "NONE" and "" or tracker.FontFlags or "OUTLINE"
     local colour = tracker.TextColor or { 1, 1, 1 }
     count:ClearAllPoints()
-    count:SetPoint("CENTER", runtime.root, "CENTER", 0, 0)
+    count:SetAllPoints(runtime.countBox)
     count:SetFont(font, size, flags)
+    runtime.countBox:SetSize(200, size * 1.5)
     count:SetTextColor(colour[1] or 1, colour[2] or 1, colour[3] or 1, 1)
     return true
 end
@@ -63,9 +64,9 @@ local function ApplyDurationBarStyle(runtime)
     local colour = tracker.DurationBarColor or { 0.2, 0.8, 1 }
     local width = math.max(12, tonumber(tracker.DurationBarWidth) or 42)
     local height = math.max(1, tonumber(tracker.DurationBarHeight) or 3)
-    local fontSize = tonumber(tracker.FontSize) or 24
+    local anchor = runtime.durationAnchor or runtime.countBox or runtime.preview or runtime.root
     bar:ClearAllPoints()
-    bar:SetPoint("TOP", runtime.root, "CENTER", 0, -(fontSize * 0.5 + 3))
+    bar:SetPoint("TOP", anchor, "BOTTOM", 0, -2)
     bar:SetSize(width, height)
     bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     bar:SetStatusBarColor(colour[1] or 0.2, colour[2] or 0.8, colour[3] or 1, 1)
@@ -78,7 +79,11 @@ local function ConfigureDurationBar(runtime)
     if runtime.tracker.ShowDurationBar then
         if not ApplyDurationBarStyle(runtime) then return false end
         bar:Show()
-        return Call(button, "SetDurationBar", bar, {})
+        local options = {}
+        if Enum and Enum.StatusBarTimerDirection then
+            options.direction = Enum.StatusBarTimerDirection.RemainingTime
+        end
+        return Call(button, "SetDurationBar", bar, options)
     end
     Call(button, "ClearDurationBar")
     bar:Hide()
@@ -112,6 +117,9 @@ local function CreateRoot(runtime)
     runtime.preview:Hide()
     runtime.previewDuration = CreateFrame("StatusBar", nil, root)
     runtime.previewDuration:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    runtime.previewDuration.background = runtime.previewDuration:CreateTexture(nil, "BACKGROUND")
+    runtime.previewDuration.background:SetAllPoints()
+    runtime.previewDuration.background:SetColorTexture(0, 0, 0, 0.65)
     runtime.previewDuration:SetMinMaxValues(0, 1)
     runtime.previewDuration:SetValue(0.65)
     runtime.previewDuration:Hide()
@@ -123,8 +131,15 @@ local function InitializeAuraButton(runtime, auraButton)
         or not Call(auraButton, "SetMouseMotionEnabled", false) then
         return false
     end
-    runtime.count = auraButton:CreateFontString(nil, "OVERLAY")
+    runtime.countBox = CreateFrame("Frame", nil, auraButton)
+    runtime.countBox:SetSize(200, 36)
+    runtime.countBox:SetPoint("CENTER", runtime.root, "CENTER", 0, 0)
+    runtime.count = runtime.countBox:CreateFontString(nil, "OVERLAY")
+    runtime.count:SetAllPoints(runtime.countBox)
     runtime.durationBar = CreateFrame("StatusBar", nil, auraButton)
+    runtime.durationBar.background = runtime.durationBar:CreateTexture(nil, "BACKGROUND")
+    runtime.durationBar.background:SetAllPoints()
+    runtime.durationBar.background:SetColorTexture(0, 0, 0, 0.65)
     if not ApplyTextStyle(runtime) then return false end
     local options = {}
     local formatter = GetStackFormatter()
@@ -226,13 +241,22 @@ function NS:SetPreview(id, enabled)
     if runtime.previewActive then
         self.Cursor:Remove(runtime)
         runtime.root:Show()
-        runtime.preview:SetFont(runtime.tracker.Font or NS.DEFAULT_FONT, tonumber(runtime.tracker.FontSize) or 24,
+    runtime.preview:SetFont(runtime.tracker.Font or NS.DEFAULT_FONT, tonumber(runtime.tracker.FontSize) or 24,
             runtime.tracker.FontFlags == "NONE" and "" or runtime.tracker.FontFlags or "OUTLINE")
+        local previewSize = tonumber(runtime.tracker.FontSize) or 24
+        runtime.preview:SetSize(200, previewSize * 1.5)
+        runtime.preview:SetJustifyH("CENTER")
+        runtime.preview:SetJustifyV("MIDDLE")
         local colour = runtime.tracker.TextColor or { 1, 1, 1 }
         runtime.preview:SetTextColor(colour[1] or 1, colour[2] or 1, colour[3] or 1, 1)
         runtime.preview:SetText("10")
         runtime.preview:Show()
-        ApplyDurationBarStyle({ tracker = runtime.tracker, durationBar = runtime.previewDuration, root = runtime.root })
+        ApplyDurationBarStyle({
+            tracker = runtime.tracker,
+            durationBar = runtime.previewDuration,
+            durationAnchor = runtime.preview,
+            root = runtime.root,
+        })
         runtime.previewDuration:SetShown(runtime.tracker.ShowDurationBar == true)
         if runtime.container then Call(runtime.container, "SetEnabled", false) end
         self:ApplyAnchor(runtime)

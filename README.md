@@ -1,21 +1,56 @@
-# lafee bdk bones stacks
+# Lafee BDK Bone Stacks
 
-Local Retail 12.1 prototype for text-only aura application counters.
+**Lafee BDK Bone Stacks** is a lightweight World of Warcraft addon designed for **Blood Death Knights**.
 
-## Security model
+Its purpose is simple: display the current number of **Bone Shield** stacks in a clean, highly visible way without requiring the full aura icon.
 
-Each tracker owns an `AuraContainer` and a single `AuraButton` slot. It uses a candidate filter containing only the configured aura IDs and binds a child `FontString` with `AuraButton:SetApplicationCount(fontString, { formatter = C_StringUtil.CreateAbbreviatedNumberFormatter() })`.
+## Features
 
-The addon never reads aura application counts. Blizzard writes and clears the FontString itself. No icon, cooldown, border, or glow is created.
+* Displays the current **Bone Shield stack count**
+* Minimalist text-only display
+* No unnecessary icon or aura frame
+* Designed specifically for **Blood Death Knight**
+* Lightweight and focused on a single task
+* Intended to remain easy to position alongside a custom UI
 
-`HideWhenMissing` is fail-closed: Blizzard clears the bound text when the aura is absent. Showing a synthetic `0` is deliberately not supported because absence is not read by addon Lua.
+## Why?
 
-## Test checklist
+Bone Shield is one of the core resources to monitor when playing Blood Death Knight.
 
-1. Bone Shield absent: no residual number.
-2. Bone Shield with one, multiple, decreasing, and increasing stacks.
-3. Aura expiration and reapplication.
-4. Combat, dungeon, Mythic+, specialization change, and `/reload`.
-5. Cursor mode and changed UI scale.
-6. Frame anchor missing, then late-loaded.
-7. Preview open/close and multiple cursor trackers.
+Traditional aura displays often dedicate an entire icon to it, even when the only information you really need at a glance is:
+
+**How many stacks do I have left?**
+
+Lafee BDK Bone Stacks focuses entirely on that information.
+
+## Compatibility
+
+Designed for the **Retail** version of World of Warcraft.
+
+The addon is specifically intended for **Blood Death Knights** and the Bone Shield mechanic.
+
+## Development
+
+Repository:
+
+```text
+https://github.com/Lafeeleonie/lafee_bdk_bones_stacks
+```
+
+Issues and bug reports can be submitted through GitHub.
+
+## License
+
+Copyright © 2026 Lafeeleonie.
+
+This project is distributed under a **restrictive All Rights Reserved license**.
+
+You may use and modify the addon for personal use, but redistribution, republishing, forks, derivative distributions, or reuse of substantial portions of the source code are prohibited without prior written permission.
+
+See [`LICENSE.md`](LICENSE.md) for the complete license terms.
+
+## Author
+
+**Lafeeleonie**
+
+World of Warcraft addon development, UI customization and Mythic+ tanking.

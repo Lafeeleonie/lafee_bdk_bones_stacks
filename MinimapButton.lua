@@ -1,7 +1,7 @@
 local _, NS = ...
 
 local DATA_OBJECT_NAME = "LafeeBDKBonesStacks"
-local ICON_TEXTURE = "Interface\\Icons\\Spell_DeathKnight_BoneShield"
+local ICON_TEXTURE = "Interface\\Icons\\ability_deathknight_boneshield"
 
 local function GetSettings()
     if not NS.db then return nil end

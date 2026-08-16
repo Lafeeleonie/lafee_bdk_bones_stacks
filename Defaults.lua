@@ -51,6 +51,7 @@ function NS:InitializeDatabase()
         self.db.Order[1] = tracker.ID
     end
     for _, tracker in pairs(self.db.Trackers) do
+        tracker.AnchorMode = "CURSOR"
         if tracker.ShowDurationBar == nil then tracker.ShowDurationBar = false end
         if tracker.DurationBarWidth == nil then tracker.DurationBarWidth = 42 end
         if tracker.DurationBarHeight == nil then tracker.DurationBarHeight = 3 end
@@ -77,7 +78,7 @@ function NS:CreateTracker(name)
     tracker.ID = id
     tracker.Name = name or "Aura Stacks"
     tracker.AuraIDs = {}
-    tracker.AnchorMode = "FIXED"
+    tracker.AnchorMode = "CURSOR"
     tracker.OffsetX = 0
     tracker.OffsetY = 0
     self.db.Trackers[id] = tracker

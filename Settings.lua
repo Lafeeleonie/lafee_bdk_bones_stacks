@@ -4,6 +4,7 @@ local SettingsWindow
 local selectedID
 local pages = {}
 local navButtons = {}
+local RefreshSettingsPreview
 
 local function Label(parent, text, font, x, y)
     local label = parent:CreateFontString(nil, "ARTWORK", font or "GameFontHighlight")
@@ -42,43 +43,78 @@ local function Dropdown(parent, label, x, y, width, choices, getValue, setValue)
             local info = UIDropDownMenu_CreateInfo()
             info.text = choice.text
             info.value = choice.value
+            info.arg1 = choice.value
             info.func = function(_, value)
                 setValue(value)
                 UIDropDownMenu_SetSelectedValue(dropdown, value)
+                UIDropDownMenu_SetText(dropdown, choice.text)
+                if RefreshSettingsPreview then RefreshSettingsPreview() end
             end
             info.checked = getValue() == choice.value
             UIDropDownMenu_AddButton(info, level)
         end
     end)
     function dropdown:Refresh()
-        UIDropDownMenu_SetSelectedValue(self, getValue())
+        local value = getValue()
+        UIDropDownMenu_SetSelectedValue(self, value)
+        for _, choice in ipairs(choices) do
+            if choice.value == value then
+                UIDropDownMenu_SetText(self, choice.text)
+                break
+            end
+        end
     end
     return dropdown
 end
 
 local function Slider(parent, label, x, y, width, minimum, maximum, step, getValue, setValue)
     Label(parent, label, "GameFontHighlight", x, y)
+    local decrease = Button(parent, "<", x + 202, y + 4, 24, function() end)
     local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
-    slider:SetPoint("TOPLEFT", x + 205, y + 7)
-    slider:SetWidth(width)
+    slider:SetPoint("TOPLEFT", x + 236, y + 7)
+    slider:SetWidth(width - 68)
     slider:SetMinMaxValues(minimum, maximum)
     slider:SetValueStep(step)
     slider:SetObeyStepOnDrag(true)
     slider.Low:SetText(tostring(minimum))
     slider.High:SetText(tostring(maximum))
     slider.Text:Hide()
-    slider.value = Label(parent, "", "GameFontHighlight", x + 215 + width, y)
+    local increase = Button(parent, ">", x + 178 + width, y + 4, 24, function() end)
+    slider.input = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    slider.input:SetAutoFocus(false)
+    slider.input:SetSize(58, 22)
+    slider.input:SetPoint("TOPLEFT", x + 210 + width, y + 3)
+    slider.input:SetJustifyH("CENTER")
+    local function Commit(value)
+        value = tonumber(value)
+        if not value then value = getValue() end
+        value = math.max(minimum, math.min(maximum, value))
+        value = math.floor((value / step) + 0.5) * step
+        slider:SetValue(value)
+        setValue(value)
+        slider.input:SetText(string.format("%.0f", value))
+        if selectedID then NS:RefreshTracker(selectedID) end
+        if RefreshSettingsPreview then RefreshSettingsPreview() end
+    end
+    decrease:SetScript("OnClick", function() Commit((tonumber(slider:GetValue()) or 0) - step) end)
+    increase:SetScript("OnClick", function() Commit((tonumber(slider:GetValue()) or 0) + step) end)
+    slider.input:SetScript("OnEnterPressed", function(self) Commit(self:GetText()) self:ClearFocus() end)
+    slider.input:SetScript("OnEscapePressed", function(self) self:SetText(string.format("%.0f", getValue())) self:ClearFocus() end)
+    slider.input:SetScript("OnEditFocusLost", function(self) Commit(self:GetText()) end)
     slider:SetScript("OnValueChanged", function(self, value)
         setValue(value)
-        self.value:SetText(string.format("%.0f", value))
+        if not self.input:HasFocus() then self.input:SetText(string.format("%.0f", value)) end
     end)
     slider:SetScript("OnMouseUp", function()
         if selectedID then NS:RefreshTracker(selectedID) end
+        if RefreshSettingsPreview then RefreshSettingsPreview() end
     end)
+    slider:EnableMouseWheel(true)
+    slider:SetScript("OnMouseWheel", function(_, delta) Commit((tonumber(slider:GetValue()) or 0) + delta * step) end)
     function slider:Refresh()
         local value = getValue()
         self:SetValue(value)
-        self.value:SetText(string.format("%.0f", value))
+        self.input:SetText(string.format("%.0f", value))
     end
     return slider
 end
@@ -102,11 +138,13 @@ local function ColourButton(parent, label, x, y, getValue, setValue)
                 setValue({ nr, ng, nb })
                 button:Refresh()
                 NS:RefreshTracker(selectedID)
+                if RefreshSettingsPreview then RefreshSettingsPreview() end
             end,
             cancelFunc = function()
                 setValue({ previous.r, previous.g, previous.b })
                 button:Refresh()
                 NS:RefreshTracker(selectedID)
+                if RefreshSettingsPreview then RefreshSettingsPreview() end
             end,
         })
     end)
@@ -143,14 +181,6 @@ local function OrderedTrackerID(offset)
     return order[((current - 1 + offset) % #order) + 1]
 end
 
-local function ParseColour(text)
-    local result = {}
-    for value in tostring(text or ""):gmatch("[%d%.]+") do result[#result + 1] = tonumber(value) end
-    if #result ~= 3 then return nil end
-    for index = 1, 3 do result[index] = math.max(0, math.min(1, result[index])) end
-    return result
-end
-
 local function ApplyTrackerInputs(panel)
     local tracker = CurrentTracker()
     if not tracker then return end
@@ -160,24 +190,6 @@ local function ApplyTrackerInputs(panel)
     tracker.Unit = inputs.Unit:GetText() ~= "" and inputs.Unit:GetText() or "player"
     tracker.Enabled = panel.enabled:GetChecked() == true
     tracker.HideWhenMissing = panel.hideWhenMissing:GetChecked() == true
-    NS:RefreshTracker(selectedID)
-end
-
-local function ApplyPositionInputs(panel)
-    local tracker = CurrentTracker()
-    if not tracker then return end
-    tracker.AnchorFrame = panel.inputs.AnchorFrame:GetText() ~= "" and panel.inputs.AnchorFrame:GetText() or "UIParent"
-    NS:RefreshTracker(selectedID)
-end
-
-local function ApplyAppearanceInputs(panel)
-    local tracker = CurrentTracker()
-    if not tracker then return end
-    tracker.Font = panel.inputs.Font:GetText() ~= "" and panel.inputs.Font:GetText() or NS.DEFAULT_FONT
-    tracker.FontSize = math.max(6, tonumber(panel.inputs.FontSize:GetText()) or 24)
-    local flags = string.upper(panel.inputs.FontFlags:GetText() or "")
-    tracker.FontFlags = (flags == "OUTLINE" or flags == "THICKOUTLINE") and flags or "NONE"
-    tracker.TextColor = ParseColour(panel.inputs.TextColor:GetText()) or { 1, 1, 1 }
     NS:RefreshTracker(selectedID)
 end
 
@@ -196,6 +208,7 @@ local function ShowPage(name)
         button.label:SetTextColor(pageName == name and 1 or 0.9, pageName == name and 0.82 or 0.9, pageName == name and 0 or 0.9)
     end
     if pages[name] and pages[name].Refresh then pages[name]:Refresh() end
+    if RefreshSettingsPreview then RefreshSettingsPreview() end
 end
 
 local function AddNavigation(name, order)
@@ -287,73 +300,29 @@ local function CreateTrackerPage()
         self.inputs.Unit:SetText(tracker.Unit or "player")
         self.enabled:SetChecked(tracker.Enabled ~= false)
         self.hideWhenMissing:SetChecked(tracker.HideWhenMissing ~= false)
+        if RefreshSettingsPreview then RefreshSettingsPreview() end
     end
 end
 
 local function CreatePositionPage()
     local page = AddPage("Positioning")
-    page.inputs = {}
-    local y = Section(page, "Layout & positioning", -14)
-    Label(page, "CURSOR follows the mouse. FRAME anchors to a named UI frame. FIXED uses UIParent.", "GameFontHighlight", 28, y)
-    y = y - 44
-    page.mode = Dropdown(page, "Anchor mode", 28, y, 180, {
-        { text = "Cursor", value = "CURSOR" }, { text = "Frame", value = "FRAME" }, { text = "Free position", value = "FIXED" },
-    }, function()
-        local tracker = CurrentTracker()
-        return tracker and tracker.AnchorMode or "FIXED"
-    end, function(value)
-        local tracker = CurrentTracker()
-        if tracker then
-            tracker.AnchorMode = value
-            NS:RefreshTracker(selectedID)
-        end
-    end)
-    y = y - 48
-    local input = Edit(page, "Anchor frame", "AnchorFrame", 28, y, 320)
-    page.inputs.AnchorFrame = input
-    input:SetScript("OnEnterPressed", function(self) self:ClearFocus() ApplyPositionInputs(page) end)
-    y = y - 48
-    local points = {
-        { text = "Top left", value = "TOPLEFT" }, { text = "Top", value = "TOP" }, { text = "Top right", value = "TOPRIGHT" },
-        { text = "Left", value = "LEFT" }, { text = "Center", value = "CENTER" }, { text = "Right", value = "RIGHT" },
-        { text = "Bottom left", value = "BOTTOMLEFT" }, { text = "Bottom", value = "BOTTOM" }, { text = "Bottom right", value = "BOTTOMRIGHT" },
-    }
-    page.anchorPoint = Dropdown(page, "Your point", 28, y, 180, points, function()
-        local tracker = CurrentTracker()
-        return tracker and tracker.AnchorPoint or "CENTER"
-    end, function(value)
-        local tracker = CurrentTracker()
-        if tracker then
-            tracker.AnchorPoint = value
-            NS:RefreshTracker(selectedID)
-        end
-    end)
-    y = y - 48
-    page.relativePoint = Dropdown(page, "Anchor point", 28, y, 180, points, function()
-        local tracker = CurrentTracker()
-        return tracker and tracker.RelativePoint or "CENTER"
-    end, function(value)
-        local tracker = CurrentTracker()
-        if tracker then
-            tracker.RelativePoint = value
-            NS:RefreshTracker(selectedID)
-        end
-    end)
-    y = y - 48
+    local y = Section(page, "Cursor offset", -14)
+    Label(page, "Place the stack counter around the mouse pointer.", "GameFontHighlight", 28, y)
+    y = y - 56
     page.offsetX = Slider(page, "Offset X", 28, y, 240, -600, 600, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.OffsetX or 0 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.OffsetX = value end end)
-    y = y - 48
+    y = y - 64
     page.offsetY = Slider(page, "Offset Y", 28, y, 240, -400, 400, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.OffsetY or 0 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.OffsetY = value end end)
     function page:Refresh()
         local tracker = CurrentTracker()
         if not tracker then return end
-        self.mode:Refresh()
-        self.inputs.AnchorFrame:SetText(tracker.AnchorFrame or "UIParent")
-        self.anchorPoint:Refresh()
-        self.relativePoint:Refresh()
+        if tracker.AnchorMode ~= "CURSOR" then
+            tracker.AnchorMode = "CURSOR"
+            NS:RefreshTracker(selectedID)
+        end
         self.offsetX:Refresh()
         self.offsetY:Refresh()
     end
@@ -364,6 +333,22 @@ local function CreateAppearancePage()
     local y = Section(page, "Text appearance", -14)
     Label(page, "Choose the size, outline, and colour of the stack number.", "GameFontHighlight", 28, y)
     y = y - 42
+    page.font = Dropdown(page, "Font", 28, y, 220, {
+        { text = "Friz Quadrata", value = "Fonts\\FRIZQT__.TTF" },
+        { text = "Arial Narrow", value = "Fonts\\ARIALN.TTF" },
+        { text = "Morpheus", value = "Fonts\\MORPHEUS.TTF" },
+        { text = "Skurri", value = "Fonts\\SKURRI.TTF" },
+    }, function()
+        local tracker = CurrentTracker()
+        return tracker and tracker.Font or NS.DEFAULT_FONT
+    end, function(value)
+        local tracker = CurrentTracker()
+        if tracker then
+            tracker.Font = value
+            NS:RefreshTracker(selectedID)
+        end
+    end)
+    y = y - 48
     page.size = Slider(page, "Text size", 28, y, 240, 12, 72, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.FontSize or 28 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.FontSize = value end end)
@@ -396,6 +381,7 @@ local function CreateAppearancePage()
         if tracker then
             tracker.ShowDurationBar = self:GetChecked() == true
             NS:RefreshTracker(selectedID)
+            if RefreshSettingsPreview then RefreshSettingsPreview() end
         end
     end)
     y = y - 48
@@ -413,6 +399,7 @@ local function CreateAppearancePage()
     function page:Refresh()
         local tracker = CurrentTracker()
         if not tracker then return end
+        self.font:Refresh()
         self.size:Refresh()
         self.flags:Refresh()
         self.textColour:Refresh()
@@ -423,9 +410,77 @@ local function CreateAppearancePage()
     end
 end
 
+local function CreateSettingsPreview()
+    local preview = CreateFrame("Frame", nil, SettingsWindow.sidebar, "BackdropTemplate")
+    preview:SetPoint("BOTTOMLEFT", 10, 12)
+    preview:SetPoint("BOTTOMRIGHT", -10, 12)
+    preview:SetHeight(225)
+    preview:SetClipsChildren(true)
+    preview:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10 })
+    preview:SetBackdropColor(0.01, 0.01, 0.015, 0.82)
+    preview:SetBackdropBorderColor(0.25, 0.25, 0.3, 0.8)
+    Label(preview, "Preview", "GameFontNormal", 12, -12):SetTextColor(1, 0.82, 0)
+
+    preview.cursorAnchor = CreateFrame("Frame", nil, preview)
+    preview.cursorAnchor:SetSize(1, 1)
+    preview.cursorAnchor:SetPoint("CENTER", preview, "CENTER", 0, -8)
+    preview.cursor = CreateFrame("Frame", nil, preview)
+    preview.cursor:SetSize(54, 54)
+    preview.cursor:SetPoint("CENTER", preview.cursorAnchor, "CENTER", 0, 0)
+    for index = 1, 40 do
+        local angle = (index - 1) * math.pi * 2 / 40
+        local segment = preview.cursor:CreateTexture(nil, "ARTWORK")
+        segment:SetSize(3, 3)
+        segment:SetColorTexture(0.82, 0.82, 0.82, 0.9)
+        segment:SetPoint("CENTER", preview.cursor, "CENTER", math.cos(angle) * 23, math.sin(angle) * 23)
+    end
+
+    preview.countBox = CreateFrame("Frame", nil, preview)
+    preview.countBox:SetSize(200, 42)
+    preview.countBox:SetPoint("CENTER", preview.cursorAnchor, "CENTER", 0, 0)
+    preview.count = preview.countBox:CreateFontString(nil, "OVERLAY")
+    preview.count:SetAllPoints(preview.countBox)
+    preview.count:SetFont(NS.DEFAULT_FONT, 28, "OUTLINE")
+    preview.count:SetJustifyH("CENTER")
+    preview.count:SetJustifyV("MIDDLE")
+    preview.count:SetText("10")
+    preview.bar = CreateFrame("StatusBar", nil, preview)
+    preview.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    preview.bar:SetMinMaxValues(0, 1)
+    preview.bar:SetValue(0.65)
+    preview.bar.background = preview.bar:CreateTexture(nil, "BACKGROUND")
+    preview.bar.background:SetAllPoints()
+    preview.bar.background:SetColorTexture(0, 0, 0, 0.65)
+    SettingsWindow.preview = preview
+
+    RefreshSettingsPreview = function()
+        local tracker = CurrentTracker()
+        if not tracker or not SettingsWindow or not SettingsWindow.preview then return end
+        local font = tracker.Font or NS.DEFAULT_FONT
+        local size = math.max(12, tonumber(tracker.FontSize) or 28)
+        local flags = tracker.FontFlags == "NONE" and "" or tracker.FontFlags or "OUTLINE"
+        local colour = tracker.TextColor or { 1, 1, 1 }
+        preview.count:SetFont(font, size, flags)
+        preview.countBox:SetSize(200, size * 1.5)
+        preview.count:SetTextColor(colour[1] or 1, colour[2] or 1, colour[3] or 1, 1)
+        local offsetX = tonumber(tracker.OffsetX) or 0
+        local offsetY = tonumber(tracker.OffsetY) or 0
+        preview.countBox:ClearAllPoints()
+        preview.countBox:SetPoint("CENTER", preview.cursorAnchor, "CENTER", offsetX, offsetY)
+
+        local barColour = tracker.DurationBarColor or { 0.2, 0.8, 1 }
+        preview.bar:SetStatusBarColor(barColour[1] or 0.2, barColour[2] or 0.8, barColour[3] or 1, 1)
+        preview.bar:SetSize(math.min(110, math.max(12, tonumber(tracker.DurationBarWidth) or 42)),
+            math.max(1, tonumber(tracker.DurationBarHeight) or 3))
+        preview.bar:ClearAllPoints()
+        preview.bar:SetPoint("TOP", preview.countBox, "BOTTOM", 0, -2)
+        preview.bar:SetShown(tracker.ShowDurationBar == true)
+    end
+end
+
 local function CreateSettingsWindow()
     local window = CreateFrame("Frame", "LafeeBDKBonesStacksSettings", UIParent, "BackdropTemplate")
-    window:SetSize(920, 620)
+    window:SetSize(1000, 700)
     window:SetPoint("CENTER")
     window:SetFrameStrata("DIALOG")
     window:SetToplevel(true)
@@ -472,6 +527,7 @@ local function CreateSettingsWindow()
     CreateTrackerPage()
     CreatePositionPage()
     CreateAppearancePage()
+    CreateSettingsPreview()
 end
 
 function NS:InitializeSettings()
@@ -490,11 +546,7 @@ function NS:OpenSettings()
     if not SettingsWindow then return end
     SettingsWindow:Show()
     ShowPage("Trackers")
-    local tracker = CurrentTracker()
-    if tracker then
-        self:ClearAllPreviews()
-        self:SetPreview(tracker.ID, true)
-    end
+    if RefreshSettingsPreview then RefreshSettingsPreview() end
 end
 
 function NS:ToggleSettings()
