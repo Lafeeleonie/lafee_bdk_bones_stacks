@@ -10,6 +10,14 @@ assert(boneShield.Unit == "player")
 assert(boneShield.AnchorMode == "CURSOR")
 assert(NS.db.MinimapButton.hide == false and NS.db.MinimapButton.minimapPos == 225)
 assert(boneShield.ShowDurationBar == false)
+assert(boneShield.DurationDisplay == "NONE")
+assert(boneShield.DurationCircleSize == 64)
+assert(boneShield.DurationCircleThickness == 4)
+
+LafeeBDKBonesStacksDB.Trackers["legacy"] = { ID = "legacy", ShowDurationBar = true }
+LafeeBDKBonesStacksDB.Order[#LafeeBDKBonesStacksDB.Order + 1] = "legacy"
+NS:InitializeDatabase()
+assert(NS:GetTracker("legacy").DurationDisplay == "BAR")
 
 local created = NS:CreateTracker("Test")
 assert(created.AnchorMode == "CURSOR")

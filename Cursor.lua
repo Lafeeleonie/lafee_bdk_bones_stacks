@@ -13,9 +13,8 @@ local function UpdateCursorTrackers()
     cursorX = cursorX / scale
     cursorY = cursorY / scale
     for _, runtime in pairs(Cursor.active) do
-        local tracker = runtime.tracker
-        local x = cursorX + (tonumber(tracker.OffsetX) or 0)
-        local y = cursorY + (tonumber(tracker.OffsetY) or 0)
+        local x = cursorX
+        local y = cursorY
         if runtime.cursorX ~= x or runtime.cursorY ~= y then
             runtime.cursorX, runtime.cursorY = x, y
             runtime.root:ClearAllPoints()

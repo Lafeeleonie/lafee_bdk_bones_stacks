@@ -370,30 +370,42 @@ local function CreateAppearancePage()
     page.textColour = ColourButton(page, "Text colour", 28, y,
         function() local tracker = CurrentTracker() return tracker and tracker.TextColor or { 1, 1, 1 } end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.TextColor = value end end)
-    y = Section(page, "Duration bar", y - 50)
-    Label(page, "A compact bar below the number. Blizzard drives its duration directly.", "GameFontHighlight", 28, y)
+    y = Section(page, "Aura duration", y - 50)
+    Label(page, "Choose a bar below the number or a radial cooldown around the cursor.", "GameFontHighlight", 28, y)
     y = y - 42
-    page.durationEnabled = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    page.durationEnabled:SetPoint("TOPLEFT", 28, y)
-    Label(page, "Show duration bar", "GameFontHighlight", 58, y - 4)
-    page.durationEnabled:SetScript("OnClick", function(self)
+    page.durationDisplay = Dropdown(page, "Progress display", 28, y, 180, {
+        { text = "None", value = "NONE" },
+        { text = "Horizontal bar", value = "BAR" },
+        { text = "Circle around cursor", value = "CIRCLE" },
+    }, function()
+        local tracker = CurrentTracker()
+        return tracker and tracker.DurationDisplay or "NONE"
+    end, function(value)
         local tracker = CurrentTracker()
         if tracker then
-            tracker.ShowDurationBar = self:GetChecked() == true
+            tracker.DurationDisplay = value
+            tracker.ShowDurationBar = value == "BAR"
             NS:RefreshTracker(selectedID)
-            if RefreshSettingsPreview then RefreshSettingsPreview() end
         end
     end)
-    y = y - 48
+    y = y - 40
     page.durationWidth = Slider(page, "Bar width", 28, y, 240, 12, 120, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationBarWidth or 42 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationBarWidth = value end end)
-    y = y - 48
+    y = y - 40
     page.durationHeight = Slider(page, "Bar height", 28, y, 240, 1, 8, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationBarHeight or 3 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationBarHeight = value end end)
-    y = y - 48
-    page.durationColour = ColourButton(page, "Bar colour", 28, y,
+    y = y - 40
+    page.durationCircleSize = Slider(page, "Circle size", 28, y, 240, 24, 160, 1,
+        function() local tracker = CurrentTracker() return tracker and tracker.DurationCircleSize or 64 end,
+        function(value) local tracker = CurrentTracker() if tracker then tracker.DurationCircleSize = value end end)
+    y = y - 40
+    page.durationCircleThickness = Slider(page, "Circle thickness", 28, y, 240, 1, 20, 1,
+        function() local tracker = CurrentTracker() return tracker and tracker.DurationCircleThickness or 4 end,
+        function(value) local tracker = CurrentTracker() if tracker then tracker.DurationCircleThickness = value end end)
+    y = y - 40
+    page.durationColour = ColourButton(page, "Progress colour", 28, y,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationBarColor or { 0.2, 0.8, 1 } end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationBarColor = value end end)
     function page:Refresh()
@@ -403,9 +415,11 @@ local function CreateAppearancePage()
         self.size:Refresh()
         self.flags:Refresh()
         self.textColour:Refresh()
-        self.durationEnabled:SetChecked(tracker.ShowDurationBar == true)
+        self.durationDisplay:Refresh()
         self.durationWidth:Refresh()
         self.durationHeight:Refresh()
+        self.durationCircleSize:Refresh()
+        self.durationCircleThickness:Refresh()
         self.durationColour:Refresh()
     end
 end
@@ -427,6 +441,7 @@ local function CreateSettingsPreview()
     preview.cursor = CreateFrame("Frame", nil, preview)
     preview.cursor:SetSize(54, 54)
     preview.cursor:SetPoint("CENTER", preview.cursorAnchor, "CENTER", 0, 0)
+    preview.cursor:SetFrameLevel(preview:GetFrameLevel() + 2)
     for index = 1, 40 do
         local angle = (index - 1) * math.pi * 2 / 40
         local segment = preview.cursor:CreateTexture(nil, "ARTWORK")
@@ -444,6 +459,7 @@ local function CreateSettingsPreview()
     preview.count:SetJustifyH("CENTER")
     preview.count:SetJustifyV("MIDDLE")
     preview.count:SetText("10")
+    preview.countBox:SetFrameLevel(preview:GetFrameLevel() + 3)
     preview.bar = CreateFrame("StatusBar", nil, preview)
     preview.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     preview.bar:SetMinMaxValues(0, 1)
@@ -451,6 +467,16 @@ local function CreateSettingsPreview()
     preview.bar.background = preview.bar:CreateTexture(nil, "BACKGROUND")
     preview.bar.background:SetAllPoints()
     preview.bar.background:SetColorTexture(0, 0, 0, 0.65)
+    preview.circle = CreateFrame("Cooldown", nil, preview, "CooldownFrameTemplate")
+    preview.circle:ClearAllPoints()
+    preview.circle:SetPoint("CENTER", preview.cursorAnchor, "CENTER", 0, 0)
+    preview.circle:SetFrameLevel(preview:GetFrameLevel() + 1)
+    preview.circle:SetDrawEdge(false)
+    preview.circle:SetDrawBling(false)
+    preview.circle:SetDrawSwipe(true)
+    preview.circle:SetReverse(false)
+    preview.circle:SetHideCountdownNumbers(true)
+    preview.circle:Hide()
     SettingsWindow.preview = preview
 
     RefreshSettingsPreview = function()
@@ -474,7 +500,21 @@ local function CreateSettingsPreview()
             math.max(1, tonumber(tracker.DurationBarHeight) or 3))
         preview.bar:ClearAllPoints()
         preview.bar:SetPoint("TOP", preview.countBox, "BOTTOM", 0, -2)
-        preview.bar:SetShown(tracker.ShowDurationBar == true)
+        local durationDisplay = tracker.DurationDisplay or (tracker.ShowDurationBar and "BAR" or "NONE")
+        preview.bar:SetShown(durationDisplay == "BAR")
+        local circleSize = math.max(24, tonumber(tracker.DurationCircleSize) or 64)
+        preview.circle:ClearAllPoints()
+        preview.circle:SetPoint("CENTER", preview.cursorAnchor, "CENTER", 0, 0)
+        preview.circle:SetSize(circleSize, circleSize)
+        local circleThickness = math.floor((tonumber(tracker.DurationCircleThickness) or 4) + 0.5)
+        circleThickness = math.max(1, math.min(20, circleThickness))
+        preview.circle:SetSwipeTexture(string.format(
+            "Interface\\AddOns\\lafee_bdk_bones_stacks\\Media\\Ring%02d.png", circleThickness))
+        preview.circle:SetSwipeColor(barColour[1] or 0.2, barColour[2] or 0.8, barColour[3] or 1, 1)
+        preview.circle:SetShown(durationDisplay == "CIRCLE")
+        if durationDisplay == "CIRCLE" then
+            preview.circle:SetCooldown(GetTime() - 3, 10)
+        end
     end
 end
 

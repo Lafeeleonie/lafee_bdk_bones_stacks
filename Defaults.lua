@@ -31,9 +31,12 @@ local function NewBoneShieldTracker()
         TextColor = { 1, 1, 1 },
         HideWhenMissing = true,
         ShowDurationBar = false,
+        DurationDisplay = "NONE",
         DurationBarWidth = 42,
         DurationBarHeight = 3,
         DurationBarColor = { 0.2, 0.8, 1 },
+        DurationCircleSize = 64,
+        DurationCircleThickness = 4,
     }
 end
 
@@ -53,9 +56,18 @@ function NS:InitializeDatabase()
     for _, tracker in pairs(self.db.Trackers) do
         tracker.AnchorMode = "CURSOR"
         if tracker.ShowDurationBar == nil then tracker.ShowDurationBar = false end
+        if tracker.DurationDisplay == nil then
+            tracker.DurationDisplay = tracker.ShowDurationBar and "BAR" or "NONE"
+        end
+        if tracker.DurationDisplay ~= "BAR" and tracker.DurationDisplay ~= "CIRCLE" then
+            tracker.DurationDisplay = "NONE"
+        end
+        tracker.ShowDurationBar = tracker.DurationDisplay == "BAR"
         if tracker.DurationBarWidth == nil then tracker.DurationBarWidth = 42 end
         if tracker.DurationBarHeight == nil then tracker.DurationBarHeight = 3 end
         if type(tracker.DurationBarColor) ~= "table" then tracker.DurationBarColor = { 0.2, 0.8, 1 } end
+        if tracker.DurationCircleSize == nil then tracker.DurationCircleSize = 64 end
+        if tracker.DurationCircleThickness == nil then tracker.DurationCircleThickness = 4 end
     end
 end
 

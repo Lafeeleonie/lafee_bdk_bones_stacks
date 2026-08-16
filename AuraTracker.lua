@@ -54,8 +54,24 @@ local function ApplyTextStyle(runtime)
     count:SetAllPoints(runtime.countBox)
     count:SetFont(font, size, flags)
     runtime.countBox:SetSize(200, size * 1.5)
+    runtime.countBox:ClearAllPoints()
+    runtime.countBox:SetPoint("CENTER", runtime.root, "CENTER",
+        tonumber(tracker.OffsetX) or 0, tonumber(tracker.OffsetY) or 0)
     count:SetTextColor(colour[1] or 1, colour[2] or 1, colour[3] or 1, 1)
     return true
+end
+
+local function GetDurationDisplay(tracker)
+    if tracker.DurationDisplay == "BAR" or tracker.DurationDisplay == "CIRCLE" then
+        return tracker.DurationDisplay
+    end
+    return tracker.ShowDurationBar and "BAR" or "NONE"
+end
+
+local function GetDurationCircleTexture(tracker)
+    local thickness = math.floor((tonumber(tracker.DurationCircleThickness) or 4) + 0.5)
+    thickness = math.max(1, math.min(20, thickness))
+    return string.format("Interface\\AddOns\\lafee_bdk_bones_stacks\\Media\\Ring%02d.png", thickness)
 end
 
 local function ApplyDurationBarStyle(runtime)
@@ -73,10 +89,33 @@ local function ApplyDurationBarStyle(runtime)
     return true
 end
 
-local function ConfigureDurationBar(runtime)
-    local button, bar = runtime.button, runtime.durationBar
-    if not button or not bar then return false end
-    if runtime.tracker.ShowDurationBar then
+local function ApplyDurationCircleStyle(runtime)
+    local tracker, cooldown = runtime.tracker, runtime.durationCooldown
+    if not cooldown then return false end
+    local colour = tracker.DurationBarColor or { 0.2, 0.8, 1 }
+    local size = math.max(24, tonumber(tracker.DurationCircleSize) or 64)
+    cooldown:ClearAllPoints()
+    cooldown:SetPoint("CENTER", runtime.root, "CENTER", 0, 0)
+    cooldown:SetSize(size, size)
+    cooldown:SetDrawEdge(false)
+    cooldown:SetDrawBling(false)
+    cooldown:SetDrawSwipe(true)
+    cooldown:SetReverse(false)
+    cooldown:SetHideCountdownNumbers(true)
+    cooldown:SetSwipeTexture(GetDurationCircleTexture(tracker))
+    cooldown:SetSwipeColor(colour[1] or 0.2, colour[2] or 0.8, colour[3] or 1, 1)
+    return true
+end
+
+local function ConfigureDurationDisplay(runtime)
+    local button, bar, cooldown = runtime.button, runtime.durationBar, runtime.durationCooldown
+    if not button or not bar or not cooldown then return false end
+    local display = GetDurationDisplay(runtime.tracker)
+    Call(button, "ClearDurationBar")
+    Call(button, "ClearDurationCooldown")
+    bar:Hide()
+    cooldown:Hide()
+    if display == "BAR" then
         if not ApplyDurationBarStyle(runtime) then return false end
         bar:Show()
         local options = {}
@@ -84,9 +123,11 @@ local function ConfigureDurationBar(runtime)
             options.direction = Enum.StatusBarTimerDirection.RemainingTime
         end
         return Call(button, "SetDurationBar", bar, options)
+    elseif display == "CIRCLE" then
+        if not ApplyDurationCircleStyle(runtime) then return false end
+        cooldown:Show()
+        return Call(button, "SetDurationCooldown", cooldown)
     end
-    Call(button, "ClearDurationBar")
-    bar:Hide()
     return true
 end
 
@@ -123,6 +164,8 @@ local function CreateRoot(runtime)
     runtime.previewDuration:SetMinMaxValues(0, 1)
     runtime.previewDuration:SetValue(0.65)
     runtime.previewDuration:Hide()
+    runtime.previewCooldown = CreateFrame("Cooldown", nil, root, "CooldownFrameTemplate")
+    runtime.previewCooldown:Hide()
 end
 
 local function InitializeAuraButton(runtime, auraButton)
@@ -134,17 +177,21 @@ local function InitializeAuraButton(runtime, auraButton)
     runtime.countBox = CreateFrame("Frame", nil, auraButton)
     runtime.countBox:SetSize(200, 36)
     runtime.countBox:SetPoint("CENTER", runtime.root, "CENTER", 0, 0)
+    runtime.countBox:SetFrameLevel(auraButton:GetFrameLevel() + 2)
     runtime.count = runtime.countBox:CreateFontString(nil, "OVERLAY")
     runtime.count:SetAllPoints(runtime.countBox)
     runtime.durationBar = CreateFrame("StatusBar", nil, auraButton)
     runtime.durationBar.background = runtime.durationBar:CreateTexture(nil, "BACKGROUND")
     runtime.durationBar.background:SetAllPoints()
     runtime.durationBar.background:SetColorTexture(0, 0, 0, 0.65)
+    runtime.durationCooldown = CreateFrame("Cooldown", nil, auraButton, "CooldownFrameTemplate")
+    runtime.durationCooldown:SetFrameLevel(auraButton:GetFrameLevel() + 1)
+    runtime.durationCooldown:Hide()
     if not ApplyTextStyle(runtime) then return false end
     local options = {}
     local formatter = GetStackFormatter()
     if formatter then options.formatter = formatter end
-    return Call(auraButton, "SetApplicationCount", runtime.count, options) and ConfigureDurationBar(runtime)
+    return Call(auraButton, "SetApplicationCount", runtime.count, options) and ConfigureDurationDisplay(runtime)
 end
 
 local function CreateAuraDisplay(runtime)
@@ -179,7 +226,7 @@ local function ReconfigureAuraDisplay(runtime)
     end
     if not Call(runtime.container, "SetUnit", runtime.tracker.Unit or "player")
         or not Call(runtime.container, "SetAuraSlotCandidateFilters", "tracked", filters)
-        or not ApplyTextStyle(runtime) or not ConfigureDurationBar(runtime) then
+        or not ApplyTextStyle(runtime) or not ConfigureDurationDisplay(runtime) then
         return false
     end
     Call(runtime.container, "SetEnabled", not runtime.previewActive)
@@ -245,6 +292,9 @@ function NS:SetPreview(id, enabled)
             runtime.tracker.FontFlags == "NONE" and "" or runtime.tracker.FontFlags or "OUTLINE")
         local previewSize = tonumber(runtime.tracker.FontSize) or 24
         runtime.preview:SetSize(200, previewSize * 1.5)
+        runtime.preview:ClearAllPoints()
+        runtime.preview:SetPoint("CENTER", runtime.root, "CENTER",
+            tonumber(runtime.tracker.OffsetX) or 0, tonumber(runtime.tracker.OffsetY) or 0)
         runtime.preview:SetJustifyH("CENTER")
         runtime.preview:SetJustifyV("MIDDLE")
         local colour = runtime.tracker.TextColor or { 1, 1, 1 }
@@ -257,12 +307,23 @@ function NS:SetPreview(id, enabled)
             durationAnchor = runtime.preview,
             root = runtime.root,
         })
-        runtime.previewDuration:SetShown(runtime.tracker.ShowDurationBar == true)
+        ApplyDurationCircleStyle({
+            tracker = runtime.tracker,
+            durationCooldown = runtime.previewCooldown,
+            root = runtime.root,
+        })
+        local durationDisplay = GetDurationDisplay(runtime.tracker)
+        runtime.previewDuration:SetShown(durationDisplay == "BAR")
+        runtime.previewCooldown:SetShown(durationDisplay == "CIRCLE")
+        if durationDisplay == "CIRCLE" then
+            runtime.previewCooldown:SetCooldown(GetTime() - 3, 10)
+        end
         if runtime.container then Call(runtime.container, "SetEnabled", false) end
         self:ApplyAnchor(runtime)
     else
         runtime.preview:Hide()
         runtime.previewDuration:Hide()
+        runtime.previewCooldown:Hide()
         if runtime.tracker.Enabled then self:RefreshTracker(id) else runtime.root:Hide() end
     end
     return true
