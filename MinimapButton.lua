@@ -27,7 +27,7 @@ local function CreateDataObject(dataBroker)
         end,
         OnTooltipShow = function(tooltip)
             tooltip:AddLine(NS.L.TITLE)
-            tooltip:AddLine("Left-click to open settings.", 1, 1, 1)
+            tooltip:AddLine(NS.L.MINIMAP_TOOLTIP, 1, 1, 1)
         end,
     })
     return NS.MinimapDataObject

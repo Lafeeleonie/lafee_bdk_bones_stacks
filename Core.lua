@@ -8,7 +8,7 @@ events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local function Print(message)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff79c2fflafee bdk bones stacks:|r " .. message)
+    DEFAULT_CHAT_FRAME:AddMessage("|cff79c2ff" .. NS.L.TITLE .. ":|r " .. message)
 end
 
 function NS:RefreshAfterExternalAddon()

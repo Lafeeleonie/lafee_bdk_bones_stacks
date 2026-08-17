@@ -1,4 +1,5 @@
 local _, NS = ...
+local L = NS.L
 
 local SettingsWindow
 local selectedID
@@ -124,7 +125,7 @@ local function ColourButton(parent, label, x, y, getValue, setValue)
     local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     button:SetPoint("TOPLEFT", x + 205, y + 2)
     button:SetSize(56, 24)
-    button:SetText("Colour")
+    button:SetText(L.COLOUR)
     button.swatch = button:CreateTexture(nil, "OVERLAY")
     button.swatch:SetPoint("TOPLEFT", 4, -4)
     button.swatch:SetPoint("BOTTOMRIGHT", -4, 4)
@@ -211,7 +212,7 @@ local function ShowPage(name)
     if RefreshSettingsPreview then RefreshSettingsPreview() end
 end
 
-local function AddNavigation(name, order)
+local function AddNavigation(name, order, displayName)
     local button = CreateFrame("Button", nil, SettingsWindow.sidebar, "BackdropTemplate")
     button:SetPoint("TOPLEFT", 10, -70 - (order - 1) * 42)
     button:SetPoint("TOPRIGHT", -10, -70 - (order - 1) * 42)
@@ -221,43 +222,43 @@ local function AddNavigation(name, order)
     button.highlight:SetColorTexture(0.35, 0.28, 0.02, 0.62)
     button.label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     button.label:SetPoint("LEFT", 12, 0)
-    button.label:SetText(name)
+    button.label:SetText(displayName or name)
     button:SetScript("OnClick", function() ShowPage(name) end)
     navButtons[name] = button
 end
 
 local function CreateGeneralPage()
     local page = AddPage("General")
-    local y = Section(page, "General", -14)
-    Label(page, "Open this menu from the minimap launcher or with /las.", "GameFontHighlight", 28, y)
+    local y = Section(page, L.GENERAL, -14)
+    Label(page, L.OPEN_HINT, "GameFontHighlight", 28, y)
     y = y - 46
     page.minimap = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
     page.minimap:SetPoint("TOPLEFT", 28, y)
-    Label(page, "Show minimap button", "GameFontHighlight", 58, y - 4)
+    Label(page, L.SHOW_MINIMAP, "GameFontHighlight", 58, y - 4)
     page.minimap:SetScript("OnClick", function(self)
         NS.db.MinimapButton.hide = not self:GetChecked()
         NS:UpdateMinimapButton()
     end)
-    y = Section(page, "Safe aura display", y - 42)
-    Label(page, "Application counts are written directly by Blizzard to the text widget.", "GameFontHighlight", 28, y)
-    Label(page, "The addon never reads or formats aura stack values in Lua.", "GameFontHighlight", 28, y - 28)
+    y = Section(page, L.SAFE_AURA_DISPLAY, y - 42)
+    Label(page, L.SAFE_LINE_1, "GameFontHighlight", 28, y)
+    Label(page, L.SAFE_LINE_2, "GameFontHighlight", 28, y - 28)
     function page:Refresh() self.minimap:SetChecked(NS.db.MinimapButton.hide ~= true) end
 end
 
 local function CreateTrackerPage()
     local page = AddPage("Trackers")
     page.inputs = {}
-    local y = Section(page, "Aura trackers", -14)
+    local y = Section(page, L.AURA_TRACKERS, -14)
     page.selected = Label(page, "", "GameFontNormal", 28, y)
     Button(page, "<", 350, y + 4, 26, function() selectedID = OrderedTrackerID(-1) page:Refresh() end)
     Button(page, ">", 382, y + 4, 26, function() selectedID = OrderedTrackerID(1) page:Refresh() end)
-    Button(page, "New", 28, y - 36, 85, function()
+    Button(page, L.NEW, 28, y - 36, 85, function()
         local tracker = NS:CreateTracker()
         selectedID = tracker.ID
         NS:RefreshTracker(selectedID)
         page:Refresh()
     end)
-    Button(page, "Duplicate", 121, y - 36, 100, function()
+    Button(page, L.DUPLICATE, 121, y - 36, 100, function()
         local tracker = NS:DuplicateTracker(selectedID)
         if tracker then
             selectedID = tracker.ID
@@ -265,19 +266,19 @@ local function CreateTrackerPage()
             page:Refresh()
         end
     end)
-    Button(page, "Delete", 229, y - 36, 85, function()
+    Button(page, L.DELETE, 229, y - 36, 85, function()
         NS:RemoveTrackerRuntime(selectedID)
         NS:DeleteTracker(selectedID)
         selectedID = NS:GetFirstTrackerID()
         page:Refresh()
     end)
-    Button(page, "Preview", 322, y - 36, 85, function()
+    Button(page, L.PREVIEW, 322, y - 36, 85, function()
         local runtime = NS:EnsureTracker(selectedID)
         if runtime then NS:SetPreview(selectedID, not runtime.previewActive) end
     end)
-    Button(page, "Unlock", 415, y - 36, 85, function() NS:ToggleUnlock(selectedID) end)
-    y = Section(page, "Tracker settings", y - 86)
-    local fields = { { "Name", "Name", 300 }, { "AuraIDs", "Aura IDs", 300 }, { "Unit", "Unit", 180 } }
+    Button(page, L.UNLOCK, 415, y - 36, 85, function() NS:ToggleUnlock(selectedID) end)
+    y = Section(page, L.TRACKER_SETTINGS, y - 86)
+    local fields = { { "Name", L.NAME, 300 }, { "AuraIDs", L.AURA_IDS, 300 }, { "Unit", L.UNIT, 180 } }
     for _, field in ipairs(fields) do
         local input, key = Edit(page, field[2], field[1], 28, y, field[3])
         page.inputs[key] = input
@@ -286,15 +287,15 @@ local function CreateTrackerPage()
     end
     page.enabled = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
     page.enabled:SetPoint("TOPLEFT", 28, y)
-    Label(page, "Enabled", "GameFontHighlight", 58, y - 4)
+    Label(page, L.ENABLED, "GameFontHighlight", 58, y - 4)
     page.hideWhenMissing = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
     page.hideWhenMissing:SetPoint("TOPLEFT", 205, y)
-    Label(page, "Hide when missing", "GameFontHighlight", 235, y - 4)
-    Button(page, "Apply tracker", 28, y - 42, 120, function() ApplyTrackerInputs(page) page:Refresh() end)
+    Label(page, L.HIDE_WHEN_MISSING, "GameFontHighlight", 235, y - 4)
+    Button(page, L.APPLY_TRACKER, 28, y - 42, 140, function() ApplyTrackerInputs(page) page:Refresh() end)
     function page:Refresh()
         local tracker = CurrentTracker()
         if not tracker then return end
-        self.selected:SetText("Selected tracker: " .. (tracker.Name or tracker.ID))
+        self.selected:SetText(string.format(L.SELECTED_TRACKER, tracker.Name or tracker.ID))
         self.inputs.Name:SetText(tracker.Name or "")
         self.inputs.AuraIDs:SetText(NS:AuraIDsToText(tracker))
         self.inputs.Unit:SetText(tracker.Unit or "player")
@@ -306,14 +307,14 @@ end
 
 local function CreatePositionPage()
     local page = AddPage("Positioning")
-    local y = Section(page, "Cursor offset", -14)
-    Label(page, "Place the stack counter around the mouse pointer.", "GameFontHighlight", 28, y)
+    local y = Section(page, L.CURSOR_OFFSET, -14)
+    Label(page, L.CURSOR_OFFSET_DESC, "GameFontHighlight", 28, y)
     y = y - 56
-    page.offsetX = Slider(page, "Offset X", 28, y, 240, -600, 600, 1,
+    page.offsetX = Slider(page, L.OFFSET_X, 28, y, 240, -600, 600, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.OffsetX or 0 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.OffsetX = value end end)
     y = y - 64
-    page.offsetY = Slider(page, "Offset Y", 28, y, 240, -400, 400, 1,
+    page.offsetY = Slider(page, L.OFFSET_Y, 28, y, 240, -400, 400, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.OffsetY or 0 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.OffsetY = value end end)
     function page:Refresh()
@@ -330,10 +331,10 @@ end
 
 local function CreateAppearancePage()
     local page = AddPage("Appearance")
-    local y = Section(page, "Text appearance", -14)
-    Label(page, "Choose the size, outline, and colour of the stack number.", "GameFontHighlight", 28, y)
+    local y = Section(page, L.TEXT_APPEARANCE, -14)
+    Label(page, L.TEXT_APPEARANCE_DESC, "GameFontHighlight", 28, y)
     y = y - 42
-    page.font = Dropdown(page, "Font", 28, y, 220, {
+    page.font = Dropdown(page, L.FONT, 28, y, 220, {
         { text = "Friz Quadrata", value = "Fonts\\FRIZQT__.TTF" },
         { text = "Arial Narrow", value = "Fonts\\ARIALN.TTF" },
         { text = "Morpheus", value = "Fonts\\MORPHEUS.TTF" },
@@ -349,13 +350,13 @@ local function CreateAppearancePage()
         end
     end)
     y = y - 48
-    page.size = Slider(page, "Text size", 28, y, 240, 12, 72, 1,
+    page.size = Slider(page, L.TEXT_SIZE, 28, y, 240, 12, 72, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.FontSize or 28 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.FontSize = value end end)
     y = y - 48
-    page.flags = Dropdown(page, "Outline", 28, y, 160, {
-        { text = "None", value = "NONE" }, { text = "Outline", value = "OUTLINE" },
-        { text = "Thick outline", value = "THICKOUTLINE" },
+    page.flags = Dropdown(page, L.OUTLINE_LABEL, 28, y, 160, {
+        { text = L.NONE, value = "NONE" }, { text = L.OUTLINE, value = "OUTLINE" },
+        { text = L.THICK_OUTLINE, value = "THICKOUTLINE" },
     }, function()
         local tracker = CurrentTracker()
         return tracker and tracker.FontFlags or "OUTLINE"
@@ -367,16 +368,16 @@ local function CreateAppearancePage()
         end
     end)
     y = y - 48
-    page.textColour = ColourButton(page, "Text colour", 28, y,
+    page.textColour = ColourButton(page, L.TEXT_COLOUR, 28, y,
         function() local tracker = CurrentTracker() return tracker and tracker.TextColor or { 1, 1, 1 } end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.TextColor = value end end)
-    y = Section(page, "Aura duration", y - 50)
-    Label(page, "Choose a bar below the number or a radial cooldown around the cursor.", "GameFontHighlight", 28, y)
+    y = Section(page, L.AURA_DURATION, y - 50)
+    Label(page, L.AURA_DURATION_DESC, "GameFontHighlight", 28, y)
     y = y - 42
-    page.durationDisplay = Dropdown(page, "Progress display", 28, y, 180, {
-        { text = "None", value = "NONE" },
-        { text = "Horizontal bar", value = "BAR" },
-        { text = "Circle around cursor", value = "CIRCLE" },
+    page.durationDisplay = Dropdown(page, L.PROGRESS_DISPLAY, 28, y, 180, {
+        { text = L.NONE, value = "NONE" },
+        { text = L.HORIZONTAL_BAR, value = "BAR" },
+        { text = L.CIRCLE_AROUND_CURSOR, value = "CIRCLE" },
     }, function()
         local tracker = CurrentTracker()
         return tracker and tracker.DurationDisplay or "NONE"
@@ -389,23 +390,23 @@ local function CreateAppearancePage()
         end
     end)
     y = y - 40
-    page.durationWidth = Slider(page, "Bar width", 28, y, 240, 12, 120, 1,
+    page.durationWidth = Slider(page, L.BAR_WIDTH, 28, y, 240, 12, 120, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationBarWidth or 42 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationBarWidth = value end end)
     y = y - 40
-    page.durationHeight = Slider(page, "Bar height", 28, y, 240, 1, 8, 1,
+    page.durationHeight = Slider(page, L.BAR_HEIGHT, 28, y, 240, 1, 8, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationBarHeight or 3 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationBarHeight = value end end)
     y = y - 40
-    page.durationCircleSize = Slider(page, "Circle size", 28, y, 240, 24, 160, 1,
+    page.durationCircleSize = Slider(page, L.CIRCLE_SIZE, 28, y, 240, 24, 160, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationCircleSize or 64 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationCircleSize = value end end)
     y = y - 40
-    page.durationCircleThickness = Slider(page, "Circle thickness", 28, y, 240, 1, 20, 1,
+    page.durationCircleThickness = Slider(page, L.CIRCLE_THICKNESS, 28, y, 240, 1, 20, 1,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationCircleThickness or 4 end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationCircleThickness = value end end)
     y = y - 40
-    page.durationColour = ColourButton(page, "Progress colour", 28, y,
+    page.durationColour = ColourButton(page, L.PROGRESS_COLOUR, 28, y,
         function() local tracker = CurrentTracker() return tracker and tracker.DurationBarColor or { 0.2, 0.8, 1 } end,
         function(value) local tracker = CurrentTracker() if tracker then tracker.DurationBarColor = value end end)
     function page:Refresh()
@@ -433,7 +434,7 @@ local function CreateSettingsPreview()
     preview:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10 })
     preview:SetBackdropColor(0.01, 0.01, 0.015, 0.82)
     preview:SetBackdropBorderColor(0.25, 0.25, 0.3, 0.8)
-    Label(preview, "Preview", "GameFontNormal", 12, -12):SetTextColor(1, 0.82, 0)
+    Label(preview, L.PREVIEW, "GameFontNormal", 12, -12):SetTextColor(1, 0.82, 0)
 
     preview.cursorAnchor = CreateFrame("Frame", nil, preview)
     preview.cursorAnchor:SetSize(1, 1)
@@ -553,16 +554,16 @@ local function CreateSettingsWindow()
     window.sidebar:SetWidth(190)
     window.sidebar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
     window.sidebar:SetBackdropColor(0.02, 0.02, 0.03, 0.78)
-    Label(window.sidebar, "Settings", "GameFontNormal", 20, -25):SetTextColor(1, 0.82, 0)
+    Label(window.sidebar, L.SETTINGS, "GameFontNormal", 20, -25):SetTextColor(1, 0.82, 0)
 
     window.content = CreateFrame("Frame", nil, window)
     window.content:SetPoint("TOPLEFT", window.sidebar, "TOPRIGHT", 12, 0)
     window.content:SetPoint("BOTTOMRIGHT", -8, 8)
     SettingsWindow = window
-    AddNavigation("General", 1)
-    AddNavigation("Trackers", 2)
-    AddNavigation("Positioning", 3)
-    AddNavigation("Appearance", 4)
+    AddNavigation("General", 1, L.GENERAL)
+    AddNavigation("Trackers", 2, L.TRACKERS)
+    AddNavigation("Positioning", 3, L.POSITIONING)
+    AddNavigation("Appearance", 4, L.APPEARANCE)
     CreateGeneralPage()
     CreateTrackerPage()
     CreatePositionPage()
@@ -575,8 +576,8 @@ function NS:InitializeSettings()
     CreateSettingsWindow()
     if type(Settings) ~= "table" then return end
     local bridge = CreateFrame("Frame", nil, UIParent)
-    Label(bridge, "Open the addon menu with the button below.", "GameFontHighlight", 20, -20)
-    Button(bridge, "Open lafee bdk bones stacks", 20, -55, 220, function() NS:OpenSettings() end)
+    Label(bridge, L.OPEN_MENU_DESC, "GameFontHighlight", 20, -20)
+    Button(bridge, L.OPEN_MENU, 20, -55, 260, function() NS:OpenSettings() end)
     local category = Settings.RegisterCanvasLayoutCategory(bridge, self.L.TITLE)
     Settings.RegisterAddOnCategory(category)
 end

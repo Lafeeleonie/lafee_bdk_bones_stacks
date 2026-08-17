@@ -15,7 +15,7 @@ local function NewBoneShieldTracker()
     return {
         ID = "bone-shield",
         Enabled = true,
-        Name = "Bone Shield",
+        Name = NS.L and NS.L.BONE_SHIELD or "Bone Shield",
         AuraIDs = { 195181 },
         Unit = "player",
         AuraFilter = "HELPFUL|PLAYER",
@@ -88,7 +88,7 @@ function NS:CreateTracker(name)
     until not self.db.Trackers[id]
     local tracker = NewBoneShieldTracker()
     tracker.ID = id
-    tracker.Name = name or "Aura Stacks"
+    tracker.Name = name or (NS.L and NS.L.AURA_STACKS or "Aura Stacks")
     tracker.AuraIDs = {}
     tracker.AnchorMode = "CURSOR"
     tracker.OffsetX = 0
@@ -101,10 +101,12 @@ end
 function NS:DuplicateTracker(id)
     local source = self:GetTracker(id)
     if not source then return nil end
-    local copy = self:CreateTracker((source.Name or "Aura Stacks") .. " Copy")
+    local fallbackName = NS.L and NS.L.AURA_STACKS or "Aura Stacks"
+    local copySuffix = NS.L and NS.L.COPY_SUFFIX or " Copy"
+    local copy = self:CreateTracker((source.Name or fallbackName) .. copySuffix)
     local copied = Copy(source)
     copied.ID = copy.ID
-    copied.Name = (source.Name or "Aura Stacks") .. " Copy"
+    copied.Name = (source.Name or fallbackName) .. copySuffix
     self.db.Trackers[copy.ID] = copied
     return copied
 end

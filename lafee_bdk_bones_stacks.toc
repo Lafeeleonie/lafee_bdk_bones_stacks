@@ -1,6 +1,16 @@
 ## Interface: 120100
 ## Title: lafee bdk bones stacks
 ## Notes: Secret-safe aura stack counters
+## Notes-frFR: Compteurs de charges d’aura sécurisés
+## Notes-deDE: Sichere Zähler für Aurastapel
+## Notes-esES: Contadores seguros de acumulaciones de aura
+## Notes-esMX: Contadores seguros de acumulaciones de aura
+## Notes-itIT: Contatori sicuri delle cariche delle aure
+## Notes-ptBR: Contadores seguros de acúmulos de aura
+## Notes-ruRU: Безопасные счётчики стаков аур
+## Notes-koKR: 안전한 오라 중첩 카운터
+## Notes-zhCN: 安全的光环层数计数器
+## Notes-zhTW: 安全的光環層數計數器
 ## Author: Lafee
 ## Version: 0.1.0
 ## SavedVariables: LafeeBDKBonesStacksDB
