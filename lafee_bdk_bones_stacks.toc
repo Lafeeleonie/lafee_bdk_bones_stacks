@@ -12,5 +12,6 @@ Anchors.lua
 Cursor.lua
 AuraTracker.lua
 Settings.lua
+EscapeClose.lua
 MinimapButton.lua
 Core.lua
