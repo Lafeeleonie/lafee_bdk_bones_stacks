@@ -17,6 +17,7 @@
 
 Libraries/Init.xml
 Localization.lua
+LocalizationOverrides.lua
 Defaults.lua
 Anchors.lua
 Cursor.lua
