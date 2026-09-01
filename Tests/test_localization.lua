@@ -10,11 +10,17 @@ local required = {
     "PROGRESS_COLOUR", "MINIMAP_TOOLTIP",
 }
 
+local function loadLocaleFile(fileName, NS)
+    local chunk = loadfile("Locales/" .. fileName) or loadfile("../Locales/" .. fileName)
+    assert(chunk)("addon", NS)
+end
+
 for _, locale in ipairs(locales) do
     local NS = {}
     GetLocale = function() return locale end
-    local localization = loadfile("Localization.lua") or loadfile("../Localization.lua")
-    assert(localization)("addon", NS)
+    loadLocaleFile("enUS.lua", NS)
+    if locale ~= "enUS" and locale ~= "enGB" then loadLocaleFile(locale .. ".lua", NS) end
+    loadLocaleFile("Loader.lua", NS)
     for _, key in ipairs(required) do
         assert(type(NS.L[key]) == "string" and NS.L[key] ~= "", locale .. " missing " .. key)
     end

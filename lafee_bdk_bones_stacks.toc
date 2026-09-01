@@ -16,8 +16,18 @@
 ## SavedVariables: LafeeBDKBonesStacksDB
 
 Libraries/Init.xml
-Localization.lua
-LocalizationOverrides.lua
+Locales/enUS.lua
+Locales/frFR.lua
+Locales/deDE.lua
+Locales/esES.lua
+Locales/esMX.lua
+Locales/itIT.lua
+Locales/ptBR.lua
+Locales/ruRU.lua
+Locales/koKR.lua
+Locales/zhCN.lua
+Locales/zhTW.lua
+Locales/Loader.lua
 Defaults.lua
 Anchors.lua
 Cursor.lua
